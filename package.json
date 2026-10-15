@@ -1,0 +1,99 @@
+{
+  "name": "@kne/micro-mail",
+  "version": "0.1.0",
+  "description": "邮件网关系统：托管企业邮箱收发、草稿、标签、邮件模版与可配置的收发规则",
+  "scripts": {
+    "init": "node scripts/post-init.js && npm run init-server && husky && npx @kne/npm-tools deployPrompts fastify-project",
+    "init-server": "cd server && npm install",
+    "start": "run-p start-frontend start-server",
+    "start-server": "cd server && npm run dev",
+    "start-frontend": "cross-env PORT=3040 MODULES_DEV_PUBLIC_URL=/ craco start",
+    "build": "cross-env COMPONENTS_NAME=micro-mail MODULES_DEV_PUBLIC_URL=/ craco build && npm run deploy && npm run deploy-prod",
+    "deploy": "cross-env OUTPUT_HTML_PATH=build/entry.html DEPLOY_URL=/ API_URL=/ RUNTIME_ENV='env:staging' npx @kne/npm-tools entryHtml",
+    "deploy-prod": "cross-env OUTPUT_HTML_PATH=build/entry-prod.html DEPLOY_URL=/ API_URL=/ RUNTIME_ENV='env:prod' npx @kne/npm-tools entryHtml",
+    "create": "modules-dev-create",
+    "create-biz": "modules-dev-create --template @kne-template/components-biz",
+    "test": "craco test --coverage",
+    "eject": "react-scripts eject",
+    "prettier": "prettier --config .prettierrc --write 'src/**/*.{js,jsx,ts,tsx,json,css,scss}'",
+    "lint-staged": "npx lint-staged"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "{src/**/*,server/**/*}.{js,jsx,ts,tsx,json,css,scss}": [
+      "prettier --config .prettierrc --write",
+      "git add"
+    ]
+  },
+  "files": [
+    "build"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kne-union/micro-mail.git"
+  },
+  "keywords": [],
+  "author": "linzp",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kne-union/micro-mail/issues"
+  },
+  "homepage": "https://www.kne-union.top/#/components",
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "jest": {
+    "moduleNameMapper": {
+      "^@components/(.*)": "<rootDir>/src/components/$1"
+    }
+  },
+  "devDependencies": {
+    "@craco/craco": "^7.1.0",
+    "@kne/modules-dev": "^2.4.17",
+    "@kne/react-fetch": "^1.5.7",
+    "@kne/remote-loader": "^1.5.0",
+    "@loadable/component": "^5.16.7",
+    "@testing-library/jest-dom": "^6.10.0",
+    "antd": "^6.6.6",
+    "axios": "^1.20.0",
+    "classnames": "^2.5.1",
+    "cross-env": "^7.0.3",
+    "http-proxy-middleware": "^2.0.10",
+    "husky": "^9.1.7",
+    "lodash": "^4.18.1",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^3.9.10",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.30.6",
+    "sass": "^1.105.1"
+  },
+  "dependencies": {
+    "@kne/app-children-router": "^0.1.10",
+    "@kne/axios-fetch": "^1.2.4",
+    "@kne/react-intl": "^0.1.15",
+    "@kne/responsive-utils": "^0.1.16",
+    "@kne/system-layout": "^0.2.4",
+    "@kne/token-storage": "^1.0.0",
+    "@kne/use-ref-callback": "^0.1.3"
+  }
+}

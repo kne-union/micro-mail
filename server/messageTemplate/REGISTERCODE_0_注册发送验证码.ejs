@@ -1,0 +1,63 @@
+<!-- subject -->
+micro-mail 注册验证码
+<!-- html -->
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>micro-mail 注册验证码</title>
+    <style>
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            font-family: Arial, sans-serif;
+        }
+
+        .header {
+            background: #2A5CAA;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .content {
+            padding: 25px;
+            background: #f9f9f9;
+        }
+
+        .code {
+            font-size: 28px;
+            letter-spacing: 5px;
+            background: #fff;
+            padding: 15px;
+            text-align: center;
+            margin: 20px 0;
+            border: 1px dashed #2A5CAA;
+            color: #2A5CAA;
+        }
+
+        .footer {
+            padding: 10px;
+            text-align: center;
+            font-size: 12px;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>micro-mail</h1>
+    </div>
+    <div class="content">
+        <p>尊敬的用户，您好！</p>
+        <p>感谢您注册 micro-mail。请使用以下验证码完成注册：</p>
+        <div class="code"><%= code %></div>
+        <p><strong>此验证码将在 10 分钟后失效</strong>，请勿向他人泄露。</p>
+        <p>如非本人操作，请忽略此邮件。</p>
+    </div>
+    <div class="footer">
+        <p>© 2025 LeapIn. All rights reserved.</p>
+    </div>
+</div>
+</body>
+</html>
