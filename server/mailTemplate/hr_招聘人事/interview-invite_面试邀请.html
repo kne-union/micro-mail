@@ -1,0 +1,22 @@
+<!-- subject -->
+面试邀请｜请确认时间
+<!-- description -->
+浅蓝顶栏 + 主按钮区：面试邀请（链接/时间请自行替换）。编辑器内也保证标题可见。
+<!-- html -->
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;font-size:14px;line-height:1.7;color:#1f1f1f;max-width:560px;border-radius:12px;overflow:hidden;border:1px solid #f0f0f0;">
+  <div style="background:#f0f5ff;border-bottom:3px solid #1677ff;padding:20px 22px;">
+    <div style="font-size:12px;color:#1677ff;margin-bottom:4px;">Interview Invitation</div>
+    <div style="font-size:18px;font-weight:600;color:#1f1f1f;">诚邀您参加面试</div>
+  </div>
+  <div style="padding:20px 22px;background:#fff;">
+    <p style="margin:0 0 12px;">您好{{mail.from[0].name}}，</p>
+    <p style="margin:0 0 12px;">感谢您对相关岗位的兴趣。我们希望与您进一步沟通（来信主题：{{mail.subject}}）。</p>
+    <p style="margin:0 0 6px;color:#8c8c8c;font-size:13px;">建议时段</p>
+    <p style="margin:0 0 16px;font-weight:600;">（请填写面试时间）</p>
+    <p style="margin:0 0 18px;">
+      <a href="#" style="display:inline-block;padding:10px 18px;background:#1677ff;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;">确认参加 / 选择时间</a>
+    </p>
+    <p style="margin:0;color:#8c8c8c;font-size:13px;">如无法出席，请直接回复本邮件说明方便时间。</p>
+  </div>
+  <div style="padding:12px 22px;background:#fafafa;font-size:12px;color:#8c8c8c;">{{account.name}} · {{account.address}}</div>
+</div>

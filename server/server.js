@@ -1,4 +1,3 @@
-
 const fastify = require('fastify')({
   logger: true,
   querystringParser: str => require('qs').parse(str)
@@ -18,8 +17,6 @@ const options = {
     return fastify.account.models.user;
   }
 };
-
-
 
 const createServer = () => {
   fastify.register(fastifyEnv, {
@@ -95,8 +92,7 @@ const createServer = () => {
       fastify.register(require('@kne/fastify-task'), {
         prefix: `${options.prefix}/task`,
         cronTime: options.taskCron,
-        task: {
-        }
+        task: {}
       });
 
       // .env 里的值不一定写入 process.env（@fastify/env 7 起不再写入），fastify-oidc 的环境变量默认值可能读不到，需显式传入
@@ -136,10 +132,26 @@ const createServer = () => {
 
   fastify.register(
     require('fastify-plugin')(async fastify => {
+      const mailAi = require('./libs/mail-ai')(fastify);
       fastify.register(require('@kne/fastify-mail-gateway'), {
         prefix: `${options.prefix}/mail-gateway`,
         secretKey: fastify.config.MAIL_GATEWAY_SECRET_KEY,
-        getAuthenticate: () => [fastify.account.authenticate.user]
+        templateDir: path.join(__dirname, './mailTemplate'),
+        defaultLabels: [
+          { code: 'important', name: '重要', color: '#f5222d' },
+          { code: 'todo', name: '待办', color: '#fa8c16' },
+          { code: 'follow-up', name: '待跟进', color: '#1677ff' },
+          { code: 'invoice', name: '发票', color: '#13c2c2' },
+          { code: 'customer', name: '客户', color: '#2f54eb' },
+          { code: 'hr', name: '招聘', color: '#722ed1' },
+          { code: 'meeting', name: '会议', color: '#52c41a' },
+          { code: 'support', name: '客服', color: '#eb2f96' },
+          { code: 'spam', name: '垃圾邮件', color: '#8c8c8c' },
+          { code: 'archive', name: '归档', color: '#595959' }
+        ],
+        getAuthenticate: () => [fastify.account.authenticate.user],
+        conditions: mailAi.conditions,
+        actions: mailAi.actions
       });
     })
   );

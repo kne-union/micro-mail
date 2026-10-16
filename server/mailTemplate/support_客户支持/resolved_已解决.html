@@ -1,0 +1,17 @@
+<!-- subject -->
+已处理完成：{{mail.subject}}
+<!-- description -->
+成功色强调风：问题处理完成通知，可附后续建议。
+<!-- html -->
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;font-size:14px;line-height:1.7;color:#1f1f1f;max-width:560px;">
+  <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;">
+    <tr>
+      <td style="background:#f6ffed;border:1px solid #b7eb8f;border-radius:10px;padding:16px 18px;">
+        <p style="margin:0 0 6px;color:#389e0d;font-weight:600;">✓ 已处理完成</p>
+        <p style="margin:0;color:#434343;">您好{{mail.from[0].name}}，关于「{{mail.subject}}」的事项我们已处理完毕。</p>
+      </td>
+    </tr>
+  </table>
+  <p style="margin:16px 0 12px;">若结果与预期不符，或仍有疑问，请直接回复本邮件，我们会继续协助。</p>
+  <p style="margin:24px 0 0;color:#8c8c8c;font-size:13px;">{{account.name}} · {{account.address}}</p>
+</div>

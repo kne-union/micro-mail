@@ -1,0 +1,13 @@
+<!-- subject -->
+已收到您的邮件（非工作时间）
+<!-- description -->
+深色左边条风：非工作时间自动回复（编辑器内标题保持深色可见）。
+<!-- html -->
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;font-size:14px;line-height:1.7;color:#1f1f1f;max-width:560px;border:1px solid #f0f0f0;border-radius:10px;overflow:hidden;">
+  <div style="background:#f5f5f5;border-left:4px solid #141414;padding:14px 18px;font-size:13px;font-weight:600;color:#1f1f1f;letter-spacing:0.02em;">非工作时间自动回复</div>
+  <div style="padding:18px 20px;background:#fff;">
+    <p style="margin:0 0 12px;">您好{{mail.from[0].name}}，</p>
+    <p style="margin:0 0 12px;">您的来信「{{mail.subject}}」已进入队列。当前为非工作时间，我们将在下一工作日优先处理。</p>
+    <p style="margin:0;color:#8c8c8c;font-size:13px;">本回复由 {{account.name}}（{{account.address}}）自动发送。</p>
+  </div>
+</div>
