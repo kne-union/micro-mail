@@ -9,10 +9,10 @@ import withLocale from '../withLocale';
 import { useIntl } from '@kne/react-intl';
 
 const Layout = createWithRemoteLoader({
-  modules: ['components-admin:Authenticate@AfterUserLogin', 'components-core:Global@GlobalValue', 'components-admin:MailGateway@getMenuItems', 'components-admin:Account@useLogout']
+  modules: ['components-admin:Authenticate@AfterUserLogin', 'components-core:Global@GlobalValue', 'components-admin:MailGateway@getMenuItems', 'components-admin:Account@useLogout', 'components-admin:Account@Language']
 })(
   withLocale(({ remoteModules, baseUrl, children }) => {
-    const [AfterUserLogin, GlobalValue, getMenuItems, useLogout] = remoteModules;
+    const [AfterUserLogin, GlobalValue, getMenuItems, useLogout, Language] = remoteModules;
     const { locale, formatMessage } = useIntl();
     const logout = useLogout();
 
@@ -23,7 +23,7 @@ const Layout = createWithRemoteLoader({
             const userInfo = value?.value;
             return (
               <SystemLayout
-                userInfo={userInfo}
+                userInfo={Object.assign({}, userInfo, { extra: <Language /> })}
                 background={'linear-gradient(180deg, #E8DCDF, #E1D1E3, #DED7EF, #D5E0F1)'}
                 menu={{
                   base: baseUrl,
