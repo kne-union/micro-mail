@@ -107,8 +107,9 @@ module.exports = fastify => ({
         }
 
         let template = null;
-        if (params.templateId) {
-          const target = await services.template.detail({ id: params.templateId });
+        const templateId = params.templateId && typeof params.templateId === 'object' ? params.templateId.id || params.templateId.value : params.templateId;
+        if (templateId) {
+          const target = await services.template.detail({ id: templateId });
           if (target.status !== 'enabled') {
             throw new Error(`邮件模版「${target.name}」已停用`);
           }
@@ -135,7 +136,7 @@ module.exports = fastify => ({
           replyMailId: reply.id,
           to: sender.address,
           subject: generated.subject,
-          templateId: generated.templateId || params.templateId || null
+          templateId: generated.templateId || templateId || null
         };
       }
     }
