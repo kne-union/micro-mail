@@ -8,14 +8,11 @@ import withLocale from '../withLocale';
 import { useIntl } from '@kne/react-intl';
 
 const Layout = createWithRemoteLoader({
-  modules: [
-    'components-admin:Authenticate@AfterUserLoginLayout',
-    'components-core:Global@GlobalValue'
-  ]
+  modules: ['components-admin:Authenticate@AfterUserLoginLayout', 'components-core:Global@GlobalValue', 'components-admin:MailGateway@getMenuItems']
 })(
   withLocale(({ remoteModules, baseUrl, children }) => {
-    const [AfterUserLoginLayout, GlobalValue] = remoteModules;
-    const { formatMessage } = useIntl();
+    const [AfterUserLoginLayout, GlobalValue, getMenuItems] = remoteModules;
+    const { locale } = useIntl();
 
     return (
       <AfterUserLoginLayout>
@@ -23,31 +20,16 @@ const Layout = createWithRemoteLoader({
           {({ value }) => {
             const userInfo = value?.value;
             return (
-
               <SystemLayout
                 userInfo={userInfo}
                 background={'linear-gradient(180deg, #E8DCDF, #E1D1E3, #DED7EF, #D5E0F1)'}
                 menu={{
                   base: baseUrl,
-                  items: [
-                    {
-                      path: '/',
-                      label: formatMessage({ id: 'ClientAdminHome' }),
-                      toolbar: true,
-                      icon: 'home'
-                    },
-                    {
-                      path: '/sample',
-                      label: formatMessage({ id: 'ClientAdminSample' }),
-                      toolbar: true,
-                      icon: 'assignment'
-                    }
-                  ]
+                  items: getMenuItems({ locale })
                 }}
               >
                 {children || <Outlet />}
               </SystemLayout>
-
             );
           }}
         </GlobalValue>

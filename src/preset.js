@@ -53,7 +53,7 @@ export const globalInit = async () => {
       'components-admin': {
         ...registry,
         remote: 'components-admin',
-        defaultVersion: '1.1.118'
+        defaultVersion: '1.1.120'
       },
       'components-thirdparty': {
         ...registry,
@@ -149,7 +149,7 @@ export const globalInit = async () => {
     oidc: oidcClient,
     oidcMode: oidcConfig?.mode,
     staticUrl: baseApiUrl,
-    enums: Object.assign({}, await safeLoadApis('components-admin:Task@enums'), await safeLoadApis('components-admin:MessageManger@enums')),
+    enums: Object.assign({}, await safeLoadApis('components-admin:Task@enums'), await safeLoadApis('components-admin:MessageManger@enums'), await safeLoadApis('components-admin:MailGateway@enums')),
     apis: Object.assign(
       {},
       getAccountApis(),

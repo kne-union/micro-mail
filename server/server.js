@@ -47,7 +47,7 @@ const createServer = () => {
       });
 
       fastify.register(require('@kne/fastify-account'), {
-        isTest: true,
+        isTest: fastify.config.IS_TEST === true,
         prefix: `${options.prefix}`,
         getUserAuthenticate: () => fastify.oidc.authenticate.user,
         sendMessage: async ({ name, type, messageType, props }) => {
@@ -79,6 +79,7 @@ const createServer = () => {
       });
 
       fastify.register(require('@kne/fastify-message'), {
+        isTest: fastify.config.IS_TEST === true,
         prefix: `${options.prefix}/message`,
         emailConfig: {
           host: fastify.config.ALISMTP_ENDPOINT,
@@ -130,6 +131,16 @@ const createServer = () => {
           }
         });
       }
+    })
+  );
+
+  fastify.register(
+    require('fastify-plugin')(async fastify => {
+      fastify.register(require('@kne/fastify-mail-gateway'), {
+        prefix: `${options.prefix}/mail-gateway`,
+        secretKey: fastify.config.MAIL_GATEWAY_SECRET_KEY,
+        getAuthenticate: () => [fastify.account.authenticate.user]
+      });
     })
   );
 

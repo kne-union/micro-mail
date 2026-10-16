@@ -1,43 +1,20 @@
 import { createWithRemoteLoader } from '@kne/remote-loader';
 import AppChildrenRouter from '@kne/app-children-router';
-import withLocale from './withLocale';
-import { useIntl } from '@kne/react-intl';
+import { Page } from '@kne/system-layout';
 import ClientLayout from './Layout';
 
-const Client = createWithRemoteLoader({
-  modules: ['components-core:Global@usePreset']
-})(
-  withLocale(({ remoteModules, baseUrl }) => {
-    const [usePreset] = remoteModules;
-    const { apis } = usePreset();
-    const { formatMessage } = useIntl();
+const renderPage = ({ title, children }) => <Page title={title}>{children}</Page>;
 
-    return (
-      <AppChildrenRouter
-        errorPage
-        notFoundPage
-        baseUrl={baseUrl}
-        element={<ClientLayout baseUrl={baseUrl} />}
-        list={[
-          {
-            index: true,
-            title: formatMessage({ id: 'ClientAdminHome' }),
-            loader: () => import('./Home')
-          },
-          {
-            path: 'sample',
-            title: formatMessage({ id: 'ClientAdminSample' }),
-            loader: () => import('@components/Sample').then(({ ClientAdminSample }) => ClientAdminSample),
-            elementProps: {
-              apis: apis.sample,
-              baseUrl,
-              layoutType: 'system-layout'
-            }
-          }
-        ]}
-      />
-    );
-  })
-);
+const Client = createWithRemoteLoader({
+  modules: ['components-admin:MailGateway']
+})(({ remoteModules, baseUrl }) => {
+  const [MailGateway] = remoteModules;
+
+  return (
+    <AppChildrenRouter errorPage baseUrl={baseUrl} element={<ClientLayout baseUrl={baseUrl} />}>
+      <MailGateway baseUrl={baseUrl} renderPage={renderPage} />
+    </AppChildrenRouter>
+  );
+});
 
 export default Client;
