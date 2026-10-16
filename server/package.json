@@ -13,12 +13,8 @@
     "lint-staged": "npx lint-staged"
   },
   "lint-staged": {
-    "**/*.md": [
-      "git add"
-    ],
     "{libs/**/*,index}.{js,jsx,ts,tsx,json,css,scss}": [
-      "prettier --config .prettierrc --write",
-      "git add"
+      "prettier --config .prettierrc --write"
     ]
   },
   "files": [
@@ -37,12 +33,13 @@
   },
   "homepage": "https://github.com/kne-union/server#readme",
   "dependencies": {
+    "@ai-sdk/azure": "^3.0.140",
     "@fastify/env": "^5.0.3",
     "@fastify/static": "^8.3.0",
     "@kne/fastify-account": "^2.0.10",
     "@kne/fastify-aliyun": "^1.1.7",
     "@kne/fastify-file-manager": "^3.0.8",
-    "@kne/fastify-mail-gateway": "^0.1.0",
+    "@kne/fastify-mail-gateway": "^0.1.1",
     "@kne/fastify-message": "^1.0.13",
     "@kne/fastify-namespace": "^1.2.1",
     "@kne/fastify-oidc": "^0.1.6",
@@ -50,13 +47,15 @@
     "@kne/fastify-sequelize": "^4.0.5",
     "@kne/fastify-task": "^2.0.7",
     "@kne/fastify-tenant": "^1.0.0-alpha.54",
+    "ai": "^6.0.308",
     "fastify": "^5.12.7",
     "fastify-cron": "^1.4.0",
     "fastify-plugin": "^5.1.0",
     "fs-extra": "^11.4.1",
     "lodash": "^4.18.1",
     "pg": "^8.23.1",
-    "qs": "^6.16.0"
+    "qs": "^6.16.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "husky": "^9.1.7",

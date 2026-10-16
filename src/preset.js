@@ -53,7 +53,7 @@ export const globalInit = async () => {
       'components-admin': {
         ...registry,
         remote: 'components-admin',
-        defaultVersion: '1.1.120'
+        defaultVersion: '1.1.122'
       },
       'components-thirdparty': {
         ...registry,

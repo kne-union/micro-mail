@@ -1,0 +1,17 @@
+<!-- subject -->
+会议改期通知
+<!-- description -->
+警告色提示风：会议时间变更通知。
+<!-- html -->
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;font-size:14px;line-height:1.7;color:#1f1f1f;max-width:560px;">
+  <div style="background:#fffbe6;border:1px solid #ffe58f;border-radius:8px;padding:12px 14px;margin:0 0 16px;">
+    <strong style="color:#d48806;">会议时间有更新</strong>
+    <span style="color:#595959;"> — 请以本邮件最新安排为准。</span>
+  </div>
+  <p style="margin:0 0 12px;">您好{{mail.from[0].name}}，</p>
+  <p style="margin:0 0 12px;">原定与「{{mail.subject}}」相关的会议需要改期：</p>
+  <p style="margin:0 0 8px;"><span style="color:#8c8c8c;">原时间：</span>（请填写）</p>
+  <p style="margin:0 0 16px;"><span style="color:#8c8c8c;">新时间：</span><strong>（请填写）</strong></p>
+  <p style="margin:0;">给您带来不便，敬请谅解。如新时间不便，请直接回复。</p>
+  <p style="margin:24px 0 0;color:#8c8c8c;font-size:13px;">{{account.name}} · {{account.address}}</p>
+</div>
