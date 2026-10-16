@@ -1,11 +1,11 @@
 {
-  "short_name": "micro-mail",
-  "name": "micro-mail",
+  "short_name": "邮件网关",
+  "name": "邮件网关",
   "icons": [
     {
       "src": "favicon.svg",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
+      "sizes": "any",
+      "type": "image/svg+xml"
     },
     {
       "src": "favicon-192x192.png",
@@ -13,7 +13,7 @@
       "sizes": "192x192"
     },
     {
-      "src": "favicon-192x192.png",
+      "src": "favicon-512x512.png",
       "type": "image/png",
       "sizes": "512x512"
     }

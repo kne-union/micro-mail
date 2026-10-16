@@ -17,7 +17,7 @@ const renderRoot = async App => {
 
 if (process.env.NODE_ENV === 'development') {
   import('@kne/modules-dev/dist/create-entry.css');
-  import('@kne/modules-dev/dist/create-entry').then(module => {
+  import('@kne/modules-dev/dist/create-entry.modern').then(module => {
     renderRoot(module.default(({ globalPreset }) => <App globalPreset={globalPreset} />));
   });
 } else {
