@@ -7,6 +7,7 @@ import '@kne/system-layout/dist/index.css';
 
 import withLocale from '../withLocale';
 import { useIntl } from '@kne/react-intl';
+import { getPublicBasePath } from '../../../commons/publicUrl';
 
 const Layout = createWithRemoteLoader({
   modules: ['components-admin:Authenticate@AfterUserLogin', 'components-core:Global@GlobalValue', 'components-admin:MailGateway@getMenuItems', 'components-admin:Account@useLogout', 'components-admin:Account@Language']
@@ -23,6 +24,10 @@ const Layout = createWithRemoteLoader({
             const userInfo = value?.value;
             return (
               <SystemLayout
+                logo={{
+                  src: `${getPublicBasePath()}/favicon.svg`,
+                  alt: '邮件网关'
+                }}
                 userInfo={Object.assign({}, userInfo, { extra: <Language /> })}
                 background={'linear-gradient(180deg, #E8DCDF, #E1D1E3, #DED7EF, #D5E0F1)'}
                 menu={{
