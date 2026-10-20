@@ -1,6 +1,6 @@
 {
   "name": "server",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -40,7 +40,7 @@
     "@kne/fastify-aliyun": "^1.1.7",
     "@kne/fastify-app-runtime": "^0.1.3",
     "@kne/fastify-file-manager": "^3.0.8",
-    "@kne/fastify-mail-gateway": "^0.1.3",
+    "@kne/fastify-mail-gateway": "^0.1.4",
     "@kne/fastify-message": "^1.0.13",
     "@kne/fastify-namespace": "^1.2.1",
     "@kne/fastify-oidc": "^0.1.6",

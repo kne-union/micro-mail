@@ -1,6 +1,6 @@
 {
   "name": "@kne/micro-mail",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "邮件网关系统：托管企业邮箱收发、草稿、标签、邮件模版与可配置的收发规则",
   "scripts": {
     "init": "node scripts/post-init.js && npm run init-server && husky && npx @kne/npm-tools deployPrompts fastify-project",
