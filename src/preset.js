@@ -1,15 +1,59 @@
 import React from 'react';
 import { preset as fetchPreset } from '@kne/react-fetch';
 import { Spin, Empty, message } from 'antd';
-import { preset as remoteLoaderPreset, loadModule } from '@kne/remote-loader';
+import { cache as remoteModuleCache, loadModule, preset as remoteLoaderPreset } from '@kne/remote-loader';
 import { themeToken as themeTokenPreset } from '@kne/system-layout';
 import createAjax from '@kne/axios-fetch';
 import transform from 'lodash/transform';
 import merge from 'lodash/merge';
 import { getApis } from '@components/Apis';
 import { setOidcClient } from './commons/oidcClient';
+import { getPublicBasePath } from './commons/publicUrl';
 
 window.PUBLIC_URL = window.runtimePublicUrl || process.env.PUBLIC_URL;
+
+const publicBase = getPublicBasePath();
+if (publicBase && typeof document !== 'undefined') {
+  document.querySelectorAll('link[rel="icon"], link[rel="apple-touch-icon"], link[rel="manifest"]').forEach(link => {
+    const href = link.getAttribute('href') || '';
+    if (href.startsWith('/') && !href.startsWith(`${publicBase}/`)) {
+      link.setAttribute('href', `${publicBase}${href}`);
+    }
+  });
+}
+
+const ensureBootMask = () => {
+  if (typeof document === 'undefined') {
+    return;
+  }
+  if (!document.getElementById('app-boot-style')) {
+    const style = document.createElement('style');
+    style.id = 'app-boot-style';
+    style.textContent =
+      '#app-boot{position:fixed;inset:0;z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#f6f7f9}#app-boot img{width:72px;height:72px}#app-boot-name{font-size:16px;line-height:24px;font-weight:500;color:rgba(0,0,0,.88)}';
+    document.head.appendChild(style);
+  }
+  let mask = document.getElementById('app-boot');
+  if (!mask) {
+    mask = document.createElement('div');
+    mask.id = 'app-boot';
+    const img = document.createElement('img');
+    img.id = 'app-boot-logo';
+    img.alt = '';
+    img.src = `${publicBase}/favicon.svg`;
+    mask.appendChild(img);
+    document.body.prepend(mask);
+  }
+  let name = document.getElementById('app-boot-name');
+  if (!name) {
+    name = document.createElement('div');
+    name.id = 'app-boot-name';
+    mask.appendChild(name);
+  }
+  name.textContent = document.title;
+};
+
+ensureBootMask();
 
 const baseApiUrl = window.runtimeApiUrl || '';
 
@@ -24,7 +68,7 @@ const loadOidcConfig = async () => {
   }
 };
 
-export const globalInit = async () => {
+const globalInit = async () => {
   const registry = {
     url: 'https://cdn.leapin-ai.com',
     tpl: '{{url}}/components/@kne-components/{{remote}}/{{version}}/build'
@@ -144,6 +188,34 @@ export const globalInit = async () => {
 
   const getAccountApis = await safeLoadApis('components-admin:Apis@getApis');
 
+  await Promise.all(
+    [
+      'components-core:Global',
+      'components-admin:Authenticate@AfterUserLoginLayout',
+      'components-admin:Authenticate@AfterAdminUserLoginLayout',
+      'components-admin:Oidc@OidcAuthenticate',
+      'components-admin:Oidc@Interaction',
+      'components-admin:Authenticate@AfterUserLogin',
+      'components-core:Global@GlobalValue',
+      'components-admin:MailGateway@getMenuItems',
+      'components-admin:Account@useLogout',
+      'components-admin:Account@Language',
+      'components-admin:MailGateway'
+    ].map(async token => {
+      try {
+        const { default: component } = await loadModule(token);
+        if (component && typeof component.moduleMounted === 'function') {
+          await component.moduleMounted({ token, module: component });
+        }
+        if (component) {
+          remoteModuleCache.set(`${token}::{}`, component);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    })
+  );
+
   return {
     ajax,
     oidc: oidcClient,
@@ -178,3 +250,18 @@ export const globalInit = async () => {
     })
   };
 };
+
+const hideBootMask = () => {
+  if (typeof document === 'undefined') {
+    return;
+  }
+  document.getElementById('app-boot')?.remove();
+};
+
+const globalInitWithBootMask = async () => {
+  const preset = await globalInit();
+  hideBootMask();
+  return preset;
+};
+
+export { globalInitWithBootMask as globalInit };
