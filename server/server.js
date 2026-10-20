@@ -24,6 +24,14 @@ const createServer = () => {
     schema: require('./env.schema.json')
   });
 
+  // 须在其它插件之前注册，否则收集不到先定义的路由；文档由 @kne/fastify-app-runtime 的 /open-api.json 输出
+  const appPackageJson = require('../package.json');
+  fastify.register(require('@fastify/swagger'), {
+    openapi: {
+      info: { title: appPackageJson.name, version: appPackageJson.version }
+    }
+  });
+
   fastify.register(require('fastify-cron'));
 
   fastify.register(
@@ -178,27 +186,11 @@ const createServer = () => {
 
   fastify.register(
     require('fastify-plugin')(async fastify => {
-      const getEntry = () => {
-        const env = fastify.config.ENV;
-        if (env === 'staging') {
-          return 'entry.html';
-        }
-
-        if (env === 'prod') {
-          return 'entry-prod.html';
-        }
-
-        return 'index.html';
-      };
-      fastify.register(require('@fastify/static'), {
+      await fastify.register(require('@kne/fastify-app-runtime'), {
         root: path.join(__dirname, './build'),
-        prefix: '/',
-        decorateReply: false,
-        index: getEntry()
-      });
-      fastify.setNotFoundHandler((req, reply) => {
-        if (req.method === 'GET') {
-          reply.sendFile(getEntry(), { root: path.join(__dirname, './build') });
+        packageJson: appPackageJson,
+        setting: {
+          prefix: `${options.prefix}/setting`
         }
       });
     })

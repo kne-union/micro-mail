@@ -4,11 +4,10 @@ import AppChildrenRouter from '@kne/app-children-router';
 import { Navigate } from 'react-router-dom';
 import Admin from '@components/Admin';
 
-
-
 import Client from '@components/Client';
 
 import { getOidcClient } from './commons/oidcClient';
+import { clearLoginMailSync } from './commons/loginMailSync';
 import './index.scss';
 
 const Protected = ({ children }) => <RemoteLoader module="components-admin:Oidc@OidcAuthenticate">{children}</RemoteLoader>;
@@ -16,6 +15,7 @@ const Protected = ({ children }) => <RemoteLoader module="components-admin:Oidc@
 /** 远程组件内置的退出（useLogout）会跳到 /account/login，统一转为 OIDC 退出 */
 const AccountLoginRedirect = () => {
   useEffect(() => {
+    clearLoginMailSync();
     getOidcClient().logout();
   }, []);
   return null;
@@ -171,22 +171,10 @@ const App = createWithRemoteLoader({
     }
   ];
 
-
-
-
-
-
-
-
-
-
   routes.push({
     path: '*',
-    element: (
-      <Client baseUrl={baseUrl} />
-    )
+    element: <Client baseUrl={baseUrl} />
   });
-
 
   return (
     <Global preset={globalPreset} themeToken={globalPreset.themeToken}>
