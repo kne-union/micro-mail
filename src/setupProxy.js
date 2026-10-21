@@ -4,7 +4,7 @@ module.exports = function (app) {
   app.use(
     '/api',
     createProxyMiddleware({
-      target: 'http://localhost:8060',
+      target: 'http://localhost:8052',
       changeOrigin: true
     })
   );
@@ -12,7 +12,7 @@ module.exports = function (app) {
   app.use(
     // 前缀匹配会误伤前端路由 /oidc-interaction、/oidc-callback
     createProxyMiddleware(path => path === '/oidc' || path.startsWith('/oidc/'), {
-      target: 'http://localhost:8060',
+      target: 'http://localhost:8052',
       xfwd: true
     })
   );
