@@ -1,0 +1,11 @@
+name: Publish App
+on:
+  pull_request:
+    branches: [master]
+    types:
+      - closed
+jobs:
+  publish:
+    if: github.event.pull_request.merged == true
+    uses: kne-union/actions/.github/workflows/publish-fullstack-app-workflow.yml@master
+    secrets: inherit
