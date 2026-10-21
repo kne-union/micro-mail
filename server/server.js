@@ -164,6 +164,19 @@ const createServer = () => {
     })
   );
 
+  // 须在 sequelize.sync() 之前注册，@kne/fastify-setting 的设置表随 sync 创建
+  fastify.register(
+    require('fastify-plugin')(async fastify => {
+      await fastify.register(require('@kne/fastify-app-runtime'), {
+        root: path.join(__dirname, './build'),
+        packageJson: appPackageJson,
+        setting: {
+          prefix: `${options.prefix}/setting`
+        }
+      });
+    })
+  );
+
   fastify.register(
     require('fastify-plugin')(async fastify => {
       fastify.register(require('@kne/fastify-namespace'), {
@@ -181,18 +194,6 @@ const createServer = () => {
         ]
       });
       await fastify.sequelize.sync();
-    })
-  );
-
-  fastify.register(
-    require('fastify-plugin')(async fastify => {
-      await fastify.register(require('@kne/fastify-app-runtime'), {
-        root: path.join(__dirname, './build'),
-        packageJson: appPackageJson,
-        setting: {
-          prefix: `${options.prefix}/setting`
-        }
-      });
     })
   );
 
