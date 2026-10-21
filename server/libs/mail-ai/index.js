@@ -2,10 +2,28 @@ const { shouldSkipAutoReply } = require('@kne/fastify-mail-gateway/libs/actions'
 const { renderTemplate } = require('@kne/fastify-mail-gateway/libs/utils/template');
 const { judgeByCriteria } = require('./filter');
 const { generateAutoReply } = require('./auto-reply');
+const { DEFAULT_LANGUAGE_THRESHOLD, detectLanguage, getMailLanguageContent, getMailPlainText, textToHtml } = require('./content');
+const { TARGET_LANGUAGES, MAX_TEXT_LENGTH, MAX_HTML_LENGTH, getTargetLanguage, translateText, translateHtml, buildTranslatedMail, isTranslated } = require('./translate');
 
 const createFormSchema = list => ({
   blocks: [{ id: 'params', kind: 'formInfo', column: 1, list }]
 });
+
+const LANGUAGE_OPTIONS = TARGET_LANGUAGES.map(({ value, label }) => ({ value, label }));
+
+const targetLanguageField = {
+  type: 'Select',
+  name: 'targetLanguage',
+  label: '目标语言',
+  rule: 'REQ',
+  props: { defaultValue: 'zh-CN', options: LANGUAGE_OPTIONS }
+};
+
+// 占比最高的语言已是目标语言时不调用模型
+const getSameLanguageSkip = (mail, target) => {
+  const { language } = detectLanguage(getMailLanguageContent(mail));
+  return language === target.value ? { skipped: true, reason: `邮件已是${target.label}` } : null;
+};
 
 /**
  * 参考 unfolds-platform 的 Azure OpenAI（@ai-sdk/azure + ai generateObject）用法，
@@ -38,6 +56,40 @@ module.exports = fastify => ({
       evaluate: async ({ mail, params }) => {
         const result = await judgeByCriteria(fastify, { mail, params });
         return { matched: result.matched, reason: `${result.reason}（置信度 ${result.confidence.toFixed(2)}）` };
+      }
+    },
+    languageDetect: {
+      label: '邮件语言',
+      description: '统计主题与纯文本正文（不统计 HTML）中所选语言的占比，达到阈值即命中；汉字、假名、韩文按字计，其他文字按词计，英法德西等拉丁字母语言按常见词区分',
+      directions: ['receive', 'beforeSend', 'send'],
+      formSchema: createFormSchema([
+        {
+          type: 'Select',
+          name: 'language',
+          label: '语言',
+          rule: 'REQ',
+          props: { defaultValue: 'zh-CN', options: LANGUAGE_OPTIONS }
+        },
+        {
+          type: 'InputNumber',
+          name: 'threshold',
+          label: '占比阈值',
+          description: '所选语言占比不低于该值即命中',
+          props: { defaultValue: DEFAULT_LANGUAGE_THRESHOLD, min: 0.05, max: 1, step: 0.05 }
+        }
+      ]),
+      evaluate: async ({ mail, params }) => {
+        const target = getTargetLanguage(params.language || 'zh-CN');
+        const threshold = params.threshold == null || params.threshold === '' ? DEFAULT_LANGUAGE_THRESHOLD : Number(params.threshold);
+        const { ratios, language } = detectLanguage(getMailLanguageContent(mail));
+        if (!language) {
+          return { matched: false, reason: '邮件中没有可统计的文字' };
+        }
+        const ratio = ratios[target.value] || 0;
+        return {
+          matched: ratio >= threshold,
+          reason: `${target.label}占比 ${(ratio * 100).toFixed(1)}%（阈值 ${(threshold * 100).toFixed(0)}%）`
+        };
       }
     }
   },
@@ -138,6 +190,64 @@ module.exports = fastify => ({
           to: sender.address,
           subject: generated.subject,
           templateId: generated.templateId || templateId || null
+        };
+      }
+    },
+    aiTranslateOnReceive: {
+      label: 'AI 翻译（收信后）',
+      description: '用大模型把来信翻译为目标语言，译文追加在原邮件前面，分别标注「翻译：」「原文：」；邮件已是目标语言（仅能判断中英文）或已翻译过时跳过',
+      directions: ['receive'],
+      formSchema: createFormSchema([targetLanguageField]),
+      handler: async ({ mail, params, models }) => {
+        const target = getTargetLanguage(params.targetLanguage);
+        if (isTranslated(mail)) {
+          return { skipped: true, reason: '邮件已翻译过' };
+        }
+        const skip = getSameLanguageSkip(mail, target);
+        if (skip) {
+          return skip;
+        }
+        const text = getMailPlainText(mail);
+        if (!text && !mail.subject) {
+          return { skipped: true, reason: '邮件内容为空' };
+        }
+        const truncated = text.length > MAX_TEXT_LENGTH;
+        const translated = await translateText(fastify, { subject: mail.subject, text: text.slice(0, MAX_TEXT_LENGTH), target });
+        const { html, text: nextText } = buildTranslatedMail({ mail, target, translated, truncated });
+        await models.mail.update({ html, text: nextText }, { where: { id: mail.id } });
+        return { targetLanguage: target.value, subject: translated.subject, truncated };
+      }
+    },
+    aiTranslateBeforeSend: {
+      label: 'AI 翻译（发信前）',
+      description: '发送前用大模型把主题和正文直接翻译为目标语言后再发出，尽量保留正文排版；邮件已是目标语言（仅能判断中英文）时跳过，翻译失败时邮件不会发出',
+      directions: ['beforeSend'],
+      formSchema: createFormSchema([targetLanguageField]),
+      handler: async ({ mail, params }) => {
+        const target = getTargetLanguage(params.targetLanguage);
+        const skip = getSameLanguageSkip(mail, target);
+        if (skip) {
+          return skip;
+        }
+        const html = String(mail.html || '').trim();
+        if (html && html.length <= MAX_HTML_LENGTH) {
+          const translated = await translateHtml(fastify, { subject: mail.subject, html, target });
+          if (!translated.html) {
+            throw new Error('AI 翻译结果为空');
+          }
+          return { targetLanguage: target.value, mail: { subject: translated.subject || mail.subject, html: translated.html } };
+        }
+        const text = getMailPlainText(mail);
+        if (text.length > MAX_TEXT_LENGTH) {
+          throw new Error(`邮件正文超过 ${MAX_TEXT_LENGTH} 字，无法翻译`);
+        }
+        const translated = await translateText(fastify, { subject: mail.subject, text, target });
+        if (!translated.body && text) {
+          throw new Error('AI 翻译结果为空');
+        }
+        return {
+          targetLanguage: target.value,
+          mail: { subject: translated.subject || mail.subject, html: textToHtml(translated.body), text: translated.body }
         };
       }
     }

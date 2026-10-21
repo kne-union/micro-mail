@@ -1,13 +1,13 @@
 {
   "name": "@kne/micro-mail",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "邮件网关系统：托管企业邮箱收发、草稿、标签、邮件模版与可配置的收发规则",
   "scripts": {
     "init": "node scripts/post-init.js && npm run init-server && husky && npx @kne/npm-tools deployPrompts fastify-project",
     "init-server": "cd server && npm install",
     "start": "run-p start-frontend start-server",
     "start-server": "cd server && npm run dev",
-    "start-frontend": "cross-env PORT=3040 MODULES_DEV_PUBLIC_URL=/ craco start",
+    "start-frontend": "cross-env PORT=3052 MODULES_DEV_PUBLIC_URL=/ craco start",
     "build": "cross-env COMPONENTS_NAME=micro-mail MODULES_DEV_PUBLIC_URL=/ craco build && npm run deploy && npm run deploy-prod",
     "deploy": "cross-env OUTPUT_HTML_PATH=build/entry.html DEPLOY_URL=/ API_URL=/ RUNTIME_ENV='env:staging' npx @kne/npm-tools entryHtml",
     "deploy-prod": "cross-env OUTPUT_HTML_PATH=build/entry-prod.html DEPLOY_URL=/ API_URL=/ RUNTIME_ENV='env:prod' npx @kne/npm-tools entryHtml",
