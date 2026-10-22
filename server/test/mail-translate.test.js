@@ -1,6 +1,6 @@
 const { expect } = require('chai');
 const { detectLanguage, getMailLanguageContent, getMailPlainText, textToHtml } = require('../libs/mail-ai/content');
-const { getTargetLanguage, sanitizeHtml, buildTranslatedMail, isTranslated } = require('../libs/mail-ai/translate');
+const { getTargetLanguage, sanitizeHtml, extractHtmlSegments, fillHtmlSegments, buildTranslatedMail, isTranslated } = require('../libs/mail-ai/translate');
 const createMailAi = require('../libs/mail-ai');
 
 describe('mail-ai translate', () => {
@@ -51,10 +51,20 @@ describe('mail-ai translate', () => {
 
     it('should put translation before the original inside body', () => {
       const mail = { subject: 'Hello', html: '<html><body><p>Hi</p></body></html>', text: 'Hi' };
-      const { html, text } = buildTranslatedMail({ mail, target, translated: { subject: '你好', body: '嗨 <script>' }, truncated: false });
-      expect(html).to.match(/^<html><body><div data-mail-translation="zh-CN"><p><strong>翻译：<\/strong><\/p><p>主题：你好<\/p><p>嗨 &lt;script&gt;<\/p><\/div><hr><p><strong>原文：<\/strong><\/p><p>Hi<\/p><\/body><\/html>$/);
-      expect(text).to.equal(['翻译：', '主题：你好', '嗨 <script>', '', '原文：', 'Hi'].join('\n'));
+      const { subject, html, text } = buildTranslatedMail({ mail, target, translated: { subject: '你好', body: '嗨 <script>' }, truncated: false });
+      expect(subject).to.equal('你好|Hello');
+      expect(html).to.equal('<html><body><div data-mail-translation="zh-CN"><p><strong>翻译：</strong></p><p>主题：你好</p><p>嗨 &lt;script&gt;</p></div><hr><p><strong>原文：</strong></p><p>主题：Hello</p><p>Hi</p></body></html>');
+      expect(text).to.equal(['翻译：', '主题：你好', '嗨 <script>', '', '原文：', '主题：Hello', 'Hi'].join('\n'));
       expect(isTranslated({ html })).to.equal(true);
+    });
+
+    it('should keep original html layout for translated html', () => {
+      const mail = { subject: 'Hello', html: '<html><head><style>.a{color:red}</style></head><body><table class="a"><tr><td style="padding:4px">Hi</td></tr></table></body></html>' };
+      const translated = { subject: '你好', html: '<html><head><style>.a{color:red}</style></head><body><table class="a"><tr><td style="padding:4px">嗨</td></tr></table></body></html>' };
+      const { subject, html } = buildTranslatedMail({ mail, target, translated, truncated: false });
+      expect(subject).to.equal('你好|Hello');
+      expect(html).to.contain('<p>主题：你好</p><table class="a"><tr><td style="padding:4px">嗨</td></tr></table></div>');
+      expect(html.endsWith('<p>主题：Hello</p><table class="a"><tr><td style="padding:4px">Hi</td></tr></table></body></html>')).to.equal(true);
     });
 
     it('should build html from text when original html is empty and note truncation', () => {
@@ -72,6 +82,42 @@ describe('mail-ai translate', () => {
     it('should remove scripts, event handlers and javascript links', () => {
       const html = sanitizeHtml('```html\n<p onclick="x()">A</p><script>alert(1)</script><a href="javascript:alert(1)">B</a><a href="https://x.com">C</a>\n```');
       expect(html).to.equal('<p>A</p><a>B</a><a href="https://x.com">C</a>');
+    });
+  });
+
+  describe('HTML 片段翻译测试', () => {
+    const html = '<div style="color:red" title="Hi"><style>p{}</style><p> Hello <b>world</b>!</p><!-- note --><a href="https://x.com">Link</a> 123 </div>';
+
+    it('should extract text segments only, skipping tags, styles and comments', () => {
+      const { segments, truncated } = extractHtmlSegments(html);
+      expect(segments).to.deep.equal(['Hello', 'world', 'Link']);
+      expect(truncated).to.equal(false);
+    });
+
+    it('should fill translations back without changing tags or whitespace', () => {
+      const result = fillHtmlSegments(extractHtmlSegments(html), ['你好', '世界<i>', '链接']);
+      expect(result).to.equal('<div style="color:red" title="Hi"><style>p{}</style><p> 你好 <b>世界&lt;i&gt;</b>!</p><!-- note --><a href="https://x.com">链接</a> 123 </div>');
+    });
+
+    it('should never send image tags and replace long non-text with placeholders', () => {
+      const base64 = 'iVBORw0KGgo'.repeat(10);
+      const source = `<p>See <img src="data:image/png;base64,${base64}"> image data:image/png;base64,${base64} and ${base64}</p>`;
+      const parsed = extractHtmlSegments(source);
+      expect(parsed.segments).to.deep.equal(['See', 'image ⟦0⟧ and ⟦1⟧']);
+      expect(fillHtmlSegments(parsed, ['查看', '图片 ⟦0⟧ 和 ⟦1⟧'])).to.equal(`<p>查看 <img src="data:image/png;base64,${base64}"> 图片 data:image/png;base64,${base64} 和 ${base64}</p>`);
+    });
+
+    it('should skip segments with only non-text content and fail when placeholders are lost', () => {
+      const parsed = extractHtmlSegments(`<p>${'A1b2C3d4'.repeat(10)}</p><p>Hello ${'x'.repeat(80)}</p>`);
+      expect(parsed.segments).to.deep.equal(['Hello ⟦1⟧']);
+      expect(() => fillHtmlSegments(parsed, ['你好'])).to.throw('丢失了图片等非文字内容');
+    });
+
+    it('should leave segments beyond max length untranslated', () => {
+      const parsed = extractHtmlSegments('<p>Hello</p><p>World</p>', 6);
+      expect(parsed.segments).to.deep.equal(['Hello']);
+      expect(parsed.truncated).to.equal(true);
+      expect(fillHtmlSegments(parsed, ['你好'])).to.equal('<p>你好</p><p>World</p>');
     });
   });
 

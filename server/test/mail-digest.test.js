@@ -128,7 +128,7 @@ describe('mail-ai digest', () => {
   describe('立即发送开关', () => {
     const generateReplyOrTranslation = async options => {
       if (options.prompt.includes('翻译') || options.prompt.toLowerCase().includes('translat')) {
-        return { object: { subject: 'Hello', html: '<p>Hello world</p>', body: 'Hello world' } };
+        return { object: { subject: 'Hello', segments: ['Hello world'], body: 'Hello world' } };
       }
       return { object: { subject: 'Re: 咨询', html: '<p>已收到</p>' } };
     };
