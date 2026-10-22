@@ -4,6 +4,7 @@ const { judgeByCriteria } = require('./filter');
 const { generateAutoReply } = require('./auto-reply');
 const { DEFAULT_LANGUAGE_THRESHOLD, detectLanguage, getMailLanguageContent, getMailPlainText, textToHtml } = require('./content');
 const { TARGET_LANGUAGES, MAX_TEXT_LENGTH, MAX_HTML_LENGTH, getTargetLanguage, translateText, translateHtml, buildTranslatedMail, isTranslated } = require('./translate');
+const { generateDigest } = require('./digest');
 
 const createFormSchema = list => ({
   blocks: [{ id: 'params', kind: 'formInfo', column: 1, list }]
@@ -19,6 +20,20 @@ const targetLanguageField = {
   props: { defaultValue: 'zh-CN', options: LANGUAGE_OPTIONS }
 };
 
+const sendImmediatelyField = {
+  type: 'Switch',
+  name: 'sendImmediately',
+  label: '立即发送',
+  description: '关闭后不发送，存入草稿箱，可修改后手动发送',
+  props: { defaultValue: true }
+};
+
+// 旧规则没有该参数，按立即发送处理
+const isSendImmediately = params => params.sendImmediately == null || params.sendImmediately === '' || params.sendImmediately === true || params.sendImmediately === 'true';
+
+// 发信前翻译改存草稿时打上该标记，用户核对后手动发送不再重复翻译
+const TRANSLATED_HEADER = 'X-Mail-Gateway-Translated';
+
 // 占比最高的语言已是目标语言时不调用模型
 const getSameLanguageSkip = (mail, target) => {
   const { language } = detectLanguage(getMailLanguageContent(mail));
@@ -27,7 +42,7 @@ const getSameLanguageSkip = (mail, target) => {
 
 /**
  * 参考 unfolds-platform 的 Azure OpenAI（@ai-sdk/azure + ai generateObject）用法，
- * 为邮件网关注册：AI 筛选条件 + AI 自动回复动作。
+ * 为邮件网关注册：AI 筛选条件 + AI 自动回复、翻译、汇总转发动作。
  */
 module.exports = fastify => ({
   conditions: {
@@ -96,7 +111,7 @@ module.exports = fastify => ({
   actions: {
     aiAutoReply: {
       label: 'AI 自动回复',
-      description: '用大模型根据来信生成回复内容，并通过当前邮箱发送；可选参考邮件模版；自动跳过自动生成邮件、邮件列表和 no-reply 发件人',
+      description: '用大模型根据来信生成回复内容，并通过当前邮箱发送（或存入草稿箱待修改）；可选参考邮件模版；自动跳过自动生成邮件、邮件列表和 no-reply 发件人',
       directions: ['receive'],
       formSchema: createFormSchema([
         {
@@ -130,7 +145,8 @@ module.exports = fastify => ({
           name: 'intervalHours',
           label: '同一发件人最短回复间隔（小时）',
           props: { defaultValue: 24, min: 0 }
-        }
+        },
+        sendImmediatelyField
       ]),
       handler: async ({ mail, account, params, services, models, fastify: app }) => {
         const skipReason = shouldSkipAutoReply({ mail, account });
@@ -157,6 +173,13 @@ module.exports = fastify => ({
             return { skipped: true, reason: `${intervalHours} 小时内已自动回复过该发件人` };
           }
         }
+        const sendImmediately = isSendImmediately(params);
+        if (!sendImmediately && mail.messageId) {
+          const existing = await models.mail.findOne({ where: { accountId: mail.accountId, folder: 'draft', inReplyTo: mail.messageId }, attributes: ['id'] });
+          if (existing) {
+            return { skipped: true, reason: '草稿箱中已有该邮件的回复草稿', draftId: existing.id };
+          }
+        }
 
         let template = null;
         const templateId = params.templateId && typeof params.templateId === 'object' ? params.templateId.id || params.templateId.value : params.templateId;
@@ -174,6 +197,23 @@ module.exports = fastify => ({
         }
 
         const generated = await generateAutoReply(fastify, { mail, account, params, template });
+        if (!sendImmediately) {
+          const draft = await services.draft.save({
+            userId: account && account.userId,
+            accountId: mail.accountId,
+            to: [sender],
+            subject: generated.subject,
+            html: generated.html,
+            inReplyTo: mail.messageId,
+            references: mail.references
+          });
+          return {
+            draftId: draft.id,
+            to: sender.address,
+            subject: generated.subject,
+            templateId: generated.templateId || templateId || null
+          };
+        }
         const reply = await services.mail.send({
           userId: account && account.userId,
           accountId: mail.accountId,
@@ -220,35 +260,79 @@ module.exports = fastify => ({
     },
     aiTranslateBeforeSend: {
       label: 'AI 翻译（发信前）',
-      description: '发送前用大模型把主题和正文直接翻译为目标语言后再发出，尽量保留正文排版；邮件已是目标语言（仅能判断中英文）时跳过，翻译失败时邮件不会发出',
+      description: '发送前用大模型把主题和正文直接翻译为目标语言后再发出（或存入草稿箱待核对），尽量保留正文排版；邮件已是目标语言（仅能判断中英文）或已翻译核对过时跳过，翻译失败时邮件不会发出',
       directions: ['beforeSend'],
-      formSchema: createFormSchema([targetLanguageField]),
+      formSchema: createFormSchema([targetLanguageField, sendImmediatelyField]),
       handler: async ({ mail, params }) => {
+        if ((mail.headers || {})[TRANSLATED_HEADER.toLowerCase()]) {
+          return { skipped: true, reason: '邮件已翻译并核对过' };
+        }
         const target = getTargetLanguage(params.targetLanguage);
         const skip = getSameLanguageSkip(mail, target);
         if (skip) {
           return skip;
         }
-        const html = String(mail.html || '').trim();
-        if (html && html.length <= MAX_HTML_LENGTH) {
-          const translated = await translateHtml(fastify, { subject: mail.subject, html, target });
-          if (!translated.html) {
+        const translateMail = async () => {
+          const html = String(mail.html || '').trim();
+          if (html && html.length <= MAX_HTML_LENGTH) {
+            const translated = await translateHtml(fastify, { subject: mail.subject, html, target });
+            if (!translated.html) {
+              throw new Error('AI 翻译结果为空');
+            }
+            return { subject: translated.subject || mail.subject, html: translated.html };
+          }
+          const text = getMailPlainText(mail);
+          if (text.length > MAX_TEXT_LENGTH) {
+            throw new Error(`邮件正文超过 ${MAX_TEXT_LENGTH} 字，无法翻译`);
+          }
+          const translated = await translateText(fastify, { subject: mail.subject, text, target });
+          if (!translated.body && text) {
             throw new Error('AI 翻译结果为空');
           }
-          return { targetLanguage: target.value, mail: { subject: translated.subject || mail.subject, html: translated.html } };
-        }
-        const text = getMailPlainText(mail);
-        if (text.length > MAX_TEXT_LENGTH) {
-          throw new Error(`邮件正文超过 ${MAX_TEXT_LENGTH} 字，无法翻译`);
-        }
-        const translated = await translateText(fastify, { subject: mail.subject, text, target });
-        if (!translated.body && text) {
-          throw new Error('AI 翻译结果为空');
+          return { subject: translated.subject || mail.subject, html: textToHtml(translated.body), text: translated.body };
+        };
+        const translatedMail = await translateMail();
+        if (isSendImmediately(params)) {
+          return { targetLanguage: target.value, mail: translatedMail };
         }
         return {
           targetLanguage: target.value,
-          mail: { subject: translated.subject || mail.subject, html: textToHtml(translated.body), text: translated.body }
+          draft: true,
+          mail: Object.assign(translatedMail, { headers: { [TRANSLATED_HEADER]: target.value } })
         };
+      }
+    },
+    aiDigestForward: {
+      label: 'AI 汇总转发',
+      description: '未读邮件规则中用大模型把本次统计到的未读邮件汇总为概览和逐封要点（标注需尽快处理的邮件），用当前邮箱发给指定地址；邮件较多时只汇总最近 50 封',
+      directions: ['schedule'],
+      formSchema: createFormSchema([
+        { type: 'MailContactSelect', name: 'to', label: '转发给', rule: 'REQ' },
+        Object.assign({}, targetLanguageField, { label: '汇总语言' }),
+        {
+          type: 'TextArea',
+          name: 'instruction',
+          label: '汇总要求（可选）',
+          description: '例如：重点标出客户投诉和付款相关邮件；每封要点不超过 30 字',
+          props: { rows: 4 }
+        }
+      ]),
+      handler: async ({ mails, account, params, services }) => {
+        if (!mails || mails.length === 0) {
+          return { skipped: true, reason: '没有需要汇总的邮件' };
+        }
+        const target = getTargetLanguage(params.targetLanguage || 'zh-CN');
+        const digest = await generateDigest(fastify, { mails, account, params, target });
+        const sent = await services.mail.send({
+          userId: account && account.userId,
+          accountId: account.id,
+          to: params.to,
+          subject: digest.subject || `未读邮件汇总（${mails.length} 封）`,
+          html: digest.html,
+          headers: { 'Auto-Submitted': 'auto-generated' },
+          skipRules: true
+        });
+        return { digestMailId: sent.id, count: mails.length, summarized: digest.count, omitted: digest.omitted };
       }
     }
   }
