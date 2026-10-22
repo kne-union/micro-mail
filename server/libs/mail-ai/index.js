@@ -3,7 +3,7 @@ const { renderTemplate } = require('@kne/fastify-mail-gateway/libs/utils/templat
 const { judgeByCriteria } = require('./filter');
 const { generateAutoReply } = require('./auto-reply');
 const { DEFAULT_LANGUAGE_THRESHOLD, detectLanguage, getMailLanguageContent, getMailPlainText, textToHtml } = require('./content');
-const { TARGET_LANGUAGES, MAX_TEXT_LENGTH, MAX_HTML_LENGTH, getTargetLanguage, translateText, translateHtml, buildTranslatedMail, isTranslated } = require('./translate');
+const { TARGET_LANGUAGES, getTargetLanguage, translateText, translateHtml, buildTranslatedMail, isTranslated } = require('./translate');
 const { generateDigest } = require('./digest');
 
 const createFormSchema = list => ({
@@ -235,7 +235,7 @@ module.exports = fastify => ({
     },
     aiTranslateOnReceive: {
       label: 'AI 翻译（收信后）',
-      description: '用大模型把来信翻译为目标语言，译文追加在原邮件前面，分别标注「翻译：」「原文：」；邮件已是目标语言（仅能判断中英文）或已翻译过时跳过',
+      description: '用大模型把来信翻译为目标语言，译文保留原邮件排版并追加在原邮件前面，分别标注「翻译：」「原文：」，主题改为「译文主题|原主题」；邮件已是目标语言（仅能判断中英文）或已翻译过时跳过',
       directions: ['receive'],
       formSchema: createFormSchema([targetLanguageField]),
       handler: async ({ mail, params, models }) => {
@@ -251,16 +251,17 @@ module.exports = fastify => ({
         if (!text && !mail.subject) {
           return { skipped: true, reason: '邮件内容为空' };
         }
-        const truncated = text.length > MAX_TEXT_LENGTH;
-        const translated = await translateText(fastify, { subject: mail.subject, text: text.slice(0, MAX_TEXT_LENGTH), target });
-        const { html, text: nextText } = buildTranslatedMail({ mail, target, translated, truncated });
-        await models.mail.update({ html, text: nextText }, { where: { id: mail.id } });
+        const originalHtml = String(mail.html || '').trim();
+        const translated = originalHtml ? await translateHtml(fastify, { subject: mail.subject, html: originalHtml, target, truncate: true }) : await translateText(fastify, { subject: mail.subject, text, target, truncate: true });
+        const { truncated } = translated;
+        const { subject, html, text: nextText } = buildTranslatedMail({ mail, target, translated, truncated });
+        await models.mail.update({ subject, html, text: nextText }, { where: { id: mail.id } });
         return { targetLanguage: target.value, subject: translated.subject, truncated };
       }
     },
     aiTranslateBeforeSend: {
       label: 'AI 翻译（发信前）',
-      description: '发送前用大模型把主题和正文直接翻译为目标语言后再发出（或存入草稿箱待核对），尽量保留正文排版；邮件已是目标语言（仅能判断中英文）或已翻译核对过时跳过，翻译失败时邮件不会发出',
+      description: '发送前用大模型把主题和正文直接翻译为目标语言后再发出（或存入草稿箱待核对），只翻译文字、正文 HTML 排版保持不变；邮件已是目标语言（仅能判断中英文）或已翻译核对过时跳过，翻译失败时邮件不会发出',
       directions: ['beforeSend'],
       formSchema: createFormSchema([targetLanguageField, sendImmediatelyField]),
       handler: async ({ mail, params }) => {
@@ -274,17 +275,11 @@ module.exports = fastify => ({
         }
         const translateMail = async () => {
           const html = String(mail.html || '').trim();
-          if (html && html.length <= MAX_HTML_LENGTH) {
+          if (html) {
             const translated = await translateHtml(fastify, { subject: mail.subject, html, target });
-            if (!translated.html) {
-              throw new Error('AI 翻译结果为空');
-            }
-            return { subject: translated.subject || mail.subject, html: translated.html };
+            return { subject: translated.subject || mail.subject, html: translated.html, text: getMailPlainText({ html: translated.html }) };
           }
           const text = getMailPlainText(mail);
-          if (text.length > MAX_TEXT_LENGTH) {
-            throw new Error(`邮件正文超过 ${MAX_TEXT_LENGTH} 字，无法翻译`);
-          }
           const translated = await translateText(fastify, { subject: mail.subject, text, target });
           if (!translated.body && text) {
             throw new Error('AI 翻译结果为空');
