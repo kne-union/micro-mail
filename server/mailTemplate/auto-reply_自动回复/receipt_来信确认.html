@@ -4,7 +4,7 @@ Re: {{mail.subject}}
 极简正文：确认已收到来信，适合默认自动回复。
 <!-- html -->
 <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;font-size:14px;line-height:1.7;color:#1f1f1f;">
-  <p style="margin:0 0 12px;">您好{{mail.from[0].name}}，</p>
+  <p style="margin:0 0 12px;">您好{{mail.from.first.name}}，</p>
   <p style="margin:0 0 12px;">我们已收到您的邮件（主题：{{mail.subject}}），会尽快查阅并回复。</p>
   <p style="margin:0 0 12px;">如需补充说明，直接回复本邮件即可。</p>
   <p style="margin:28px 0 0;color:#8c8c8c;font-size:13px;">{{account.name}} · {{account.address}}</p>
