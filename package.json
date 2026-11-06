@@ -1,6 +1,6 @@
 {
   "name": "@kne/micro-mail",
-  "version": "1.0.14",
+  "version": "1.0.15",
   "description": "邮件网关系统：托管企业邮箱收发、草稿、标签、邮件模版与可配置的收发规则",
   "scripts": {
     "init": "node scripts/post-init.js && npm run init-server && husky && npx @kne/npm-tools deployPrompts fastify-project",
@@ -82,8 +82,8 @@
     "lodash": "^4.18.1",
     "npm-run-all": "^4.1.5",
     "prettier": "^3.9.10",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "react-router-dom": "^6.30.6",
     "sass": "^1.105.1"
   },
